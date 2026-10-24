@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#8fd0ff">
+<title>数数小岛 · 3D 数学启蒙</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏝️</text></svg>">
+<script type="importmap">{ "imports": { "three": "./lib/three.module.min.js" } }</script>
+</head>
+<body>
+<div id="stage"></div>
+<div id="labels"></div>
+
+<!-- 游戏中 HUD -->
+<header id="hud" class="hidden">
+  <button class="round-btn" id="btnHome" aria-label="回到首页">⌂</button>
+  <div id="progress"></div>
+  <button class="round-btn" id="btnSound" aria-label="声音">🔊</button>
+</header>
+<div id="play" class="hidden">
+  <div id="topcol">
+    <div id="bubble" title="再听一遍"><span class="avatar">🐥</span><span id="bubbleText"></span><span class="replay">🔈</span></div>
+    <div id="equation" class="hidden"></div>
+    <div id="target" class="hidden"></div>
+  </div>
+  <div id="choices" class="hidden"></div>
+  <button id="doneBtn" class="hidden">✓ 摘好了</button>
+</div>
+
+<!-- 首页 -->
+<section id="menu" class="overlay-screen">
+  <div class="brand">
+    <h1>数数小岛</h1>
+    <p>和小鸡豆豆一起，玩着学 10 以内的数</p>
+  </div>
+  <div class="cards">
+    <button class="card c1" data-mode="count"><span class="ic">🍎</span><b>摘苹果</b><small>数一数 · 有几个</small></button>
+    <button class="card c2" data-mode="add"><span class="ic">🧺</span><b>合起来</b><small>加法 · 变多了</small></button>
+    <button class="card c3" data-mode="sub"><span class="ic">🐥</span><b>喂小鸡</b><small>减法 · 变少了</small></button>
+    <button class="card c4" data-mode="mix"><span class="ic">🌈</span><b>小冒险</b><small>什么都有</small></button>
+  </div>
+  <div class="menu-foot">
+    <span class="pill">🌸 小岛上有 <b id="flowerCount">0</b> 朵花</span>
+    <button class="pill btn" id="btnParent">家长中心</button>
+  </div>
+</section>
+
+<!-- 结束 -->
+<section id="end" class="overlay-screen">
+  <div class="sheet">
+    <div class="big-emoji">🌸</div>
+    <h2 id="endTitle">小岛又变漂亮啦！</h2>
+    <p id="endText"></p>
+    <div class="row">
+      <button class="cta" id="btnAgain">再玩一次</button>
+      <button class="cta ghost" id="btnEndMenu">回到小岛</button>
+    </div>
+  </div>
+</section>
+
+<!-- 家长中心 -->
+<section id="parent" class="overlay-screen">
+  <div class="sheet wide">
+    <h2>家长中心</h2>
+    <div class="settings">
+      <label>每次玩几题 <select id="setRound"><option>3</option><option>5</option><option>8</option></select></label>
+      <label>提醒休息（分钟）<select id="setRest"><option>10</option><option>15</option><option>20</option></select></label>
+      <label class="chk"><input type="checkbox" id="setVoice" checked> 语音和音效</label>
+    </div>
+    <div class="levels">
+      当前难度（会根据孩子表现自动调整）：
+      <span>数数 ≤ <b id="lvCount">5</b></span><span>加法 ≤ <b id="lvAdd">5</b></span><span>减法 ≤ <b id="lvSub">5</b></span>
+      <button class="mini" id="btnResetLv">重置难度</button>
+    </div>
+    <details open>
+      <summary>这个游戏是怎么设计的？</summary>
+      <ul>
+        <li><b>具体 → 图像 → 抽象（CPA，新加坡数学）</b>：先摆弄 3D 苹果，再看十格框和数字点阵，最后才出现算式 3 + 2 = 5。</li>
+        <li><b>学习路径（Clements &amp; Sarama）</b>：按“点数 → 按数取物 → 合起来/接着数 → 拿走”的顺序设计任务，符合 4 岁儿童数概念发展。</li>
+        <li><b>一一对应与基数原则</b>：点一个苹果数一个数，并强调“最后数到几，就是一共有几个”。</li>
+        <li><b>十格框（Ten-frame）</b>：托盘就是十格框，帮助孩子“一眼看出”5 和几，培养数感与速视（subitizing）。</li>
+        <li><b>最近发展区 + 支架</b>：难度随表现自动升降；答错先一起数，第二次再提示正确答案，孩子不会卡住。</li>
+        <li><b>成长型思维反馈</b>：表扬“你数得很仔细”“你没有放弃”，不表扬“聪明”，也没有扣分、计时和失败。</li>
+        <li><b>多感官</b>：数字越大音越高，用声音感受“变多”；语音朗读让不识字的孩子也能独立玩。</li>
+        <li><b>内在动机</b>：每完成一题小岛长出一朵花，越玩小岛越漂亮，没有排名和付费。</li>
+        <li><b>适合 4 岁的交互</b>：只需点击（不用拖拽）、超大点击区域、每轮 3–8 题、到时提醒休息。</li>
+      </ul>
+    </details>
+    <details>
+      <summary>陪玩小建议</summary>
+      <ul>
+        <li>让孩子边点边大声数，家长可以一起数。</li>
+        <li>玩完后用真实的水果、积木再玩一遍“合起来”和“拿走”。</li>
+        <li>问孩子：“现在是变多了还是变少了？”比问答案更重要。</li>
+      </ul>
+    </details>
+    <button class="cta" id="btnParentDone">完成</button>
+  </div>
+</section>
+
+<!-- 开始遮罩（也用于解锁手机音频） -->
+<div id="cover">
+  <div class="cover-inner">
+    <div class="logo">🏝️</div>
+    <h1>数数小岛</h1>
+    <p>3D 数学启蒙 · 适合 3–6 岁</p>
+    <button class="cta big" id="btnStart">点我开始 ▶</button>
+    <small>建议使用平板横屏，并打开声音</small>
+  </div>
+</div>
+<noscript>需要开启 JavaScript</noscript>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
